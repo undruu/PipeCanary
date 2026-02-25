@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import alerts, connections, health, notifications, tables
 from app.config import settings
-from app.api import connections, tables, alerts, notifications, health
 
 app = FastAPI(
     title=settings.app_name,

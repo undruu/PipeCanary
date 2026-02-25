@@ -1,4 +1,10 @@
 from app.connectors.base import WarehouseConnector
-from app.connectors.snowflake import SnowflakeConnector
 
-__all__ = ["WarehouseConnector", "SnowflakeConnector"]
+__all__ = ["WarehouseConnector"]
+
+
+def get_snowflake_connector(**kwargs):
+    """Lazy factory to avoid importing snowflake SDK at module level."""
+    from app.connectors.snowflake import SnowflakeConnector
+
+    return SnowflakeConnector(**kwargs)
