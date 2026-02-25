@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Header
+from fastapi import Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

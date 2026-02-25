@@ -1,4 +1,4 @@
-from app.monitoring.schema_engine import SchemaEngine, SchemaDiff
+from app.monitoring.schema_engine import SchemaDiff, SchemaEngine
 
 
 class TestSchemaDiff:

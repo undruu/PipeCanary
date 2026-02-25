@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -11,7 +11,7 @@ from app.models.check_result import CheckResult
 from app.models.monitored_table import MonitoredTable
 from app.models.schema_snapshot import SchemaSnapshot
 from app.models.user import User
-from app.schemas.table import MonitorTablesRequest, MonitoredTableResponse, TableHealthResponse
+from app.schemas.table import MonitoredTableResponse, MonitorTablesRequest, TableHealthResponse
 
 router = APIRouter(tags=["tables"])
 
