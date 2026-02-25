@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pipecanary
+      POSTGRES_PASSWORD: pipecanary
+      POSTGRES_DB: pipecanary
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipecanary"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../infra/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      PIPECANARY_DATABASE_URL: postgresql+asyncpg://pipecanary:pipecanary@postgres:5432/pipecanary
+      PIPECANARY_DATABASE_URL_SYNC: postgresql://pipecanary:pipecanary@postgres:5432/pipecanary
+      PIPECANARY_REDIS_URL: redis://redis:6379/0
+      PIPECANARY_DEBUG: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: ../infra/Dockerfile.worker
+    environment:
+      PIPECANARY_DATABASE_URL: postgresql+asyncpg://pipecanary:pipecanary@postgres:5432/pipecanary
+      PIPECANARY_DATABASE_URL_SYNC: postgresql://pipecanary:pipecanary@postgres:5432/pipecanary
+      PIPECANARY_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../infra/Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
