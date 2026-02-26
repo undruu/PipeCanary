@@ -1,4 +1,5 @@
 from app.models.alert import Alert
+from app.models.api_key import ApiKey
 from app.models.check_result import CheckResult
 from app.models.connection import Connection
 from app.models.monitored_table import MonitoredTable
@@ -16,4 +17,5 @@ __all__ = [
     "CheckResult",
     "Alert",
     "NotificationConfig",
+    "ApiKey",
 ]
