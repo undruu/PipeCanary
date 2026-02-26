@@ -119,11 +119,11 @@ class TestSendAlert:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("app.notifications.slack.httpx.AsyncClient") as MockClient:
+        with patch("app.notifications.slack.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await notifier.send_alert(schema_drift_alert)
             assert result is True
@@ -139,11 +139,11 @@ class TestSendAlert:
         assert result is False
 
     async def test_http_error_returns_false(self, notifier, schema_drift_alert):
-        with patch("app.notifications.slack.httpx.AsyncClient") as MockClient:
+        with patch("app.notifications.slack.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(side_effect=httpx.HTTPError("Server error"))
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await notifier.send_alert(schema_drift_alert)
             assert result is False
