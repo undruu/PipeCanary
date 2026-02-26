@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.connectors import get_connector_for_connection
 from app.database import get_db
 from app.models.connection import Connection
 from app.models.organization import Organization
@@ -32,12 +33,15 @@ async def create_connection(
     # Production: store in AWS Secrets Manager and save the ARN
     credentials_ref = f"local://{org.id}/{payload.name}"
 
+    # Merge credentials into config so the connector factory can find them
+    merged_config = {**(payload.config or {}), **payload.credentials}
+
     connection = Connection(
         org_id=org.id,
         type=payload.type,
         name=payload.name,
         credentials_ref=credentials_ref,
-        config=payload.config,
+        config=merged_config,
         status="pending",
     )
     db.add(connection)
@@ -58,14 +62,25 @@ async def test_connection(
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
 
-    # TODO: Actually test the warehouse connection using the appropriate connector
+    try:
+        connector = get_connector_for_connection(connection)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     now = datetime.now(timezone.utc)
-    connection.status = "active"
+
+    try:
+        success = await connector.test_connection()
+    except Exception:
+        success = False
+
+    connection.status = "active" if success else "failed"
     connection.last_tested_at = now
 
+    message = "Connection test successful" if success else "Connection test failed"
     return ConnectionTestResult(
-        success=True,
-        message="Connection test successful",
+        success=success,
+        message=message,
         tested_at=now,
     )
 
@@ -73,6 +88,7 @@ async def test_connection(
 @router.get("/connections/{connection_id}/tables")
 async def list_tables(
     connection_id: UUID,
+    schema: str = Query(..., description="Schema name to list tables from"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -82,5 +98,17 @@ async def list_tables(
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
 
-    # TODO: Use the appropriate connector to list tables
-    return {"tables": [], "message": "Connector not yet configured"}
+    try:
+        connector = get_connector_for_connection(connection)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        tables = await connector.get_tables(schema)
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to retrieve tables from warehouse: {e}",
+        )
+
+    return {"tables": tables}
