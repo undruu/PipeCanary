@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
