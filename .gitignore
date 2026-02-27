@@ -35,3 +35,4 @@ htmlcov/
 
 # Docker
 *.log
+frontend/tsconfig.tsbuildinfo
