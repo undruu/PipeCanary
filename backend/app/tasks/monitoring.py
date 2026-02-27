@@ -17,6 +17,7 @@ from app.models.connection import Connection
 from app.models.monitored_table import MonitoredTable
 from app.models.notification_config import NotificationConfig
 from app.monitoring.schema_engine import SchemaEngine
+from app.notifications.email import EmailNotifier
 from app.notifications.slack import SlackNotifier
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,9 @@ async def _send_notifications(
     for nc in configs:
         if nc.channel == "slack":
             notifier = SlackNotifier(nc.destination)
+            await notifier.send_alert(alert_data)
+        elif nc.channel == "email":
+            notifier = EmailNotifier(nc.destination)
             await notifier.send_alert(alert_data)
 
     # Also send to the global Slack webhook if configured

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # Slack
     slack_webhook_url: str = ""
 
+    # Email (SendGrid)
+    sendgrid_api_key: str = ""
+    sendgrid_from_email: str = "alerts@pipecanary.io"
+
     # Snowflake defaults
     snowflake_account: str = ""
     snowflake_warehouse: str = ""
