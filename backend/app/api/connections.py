@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.connectors import get_connector_for_connection
@@ -11,7 +13,12 @@ from app.database import get_db
 from app.models.connection import Connection
 from app.models.organization import Organization
 from app.models.user import User
-from app.schemas.connection import ConnectionCreate, ConnectionResponse, ConnectionTestResult
+from app.schemas.connection import (
+    ConnectionCreate,
+    ConnectionResponse,
+    ConnectionTestResult,
+    ConnectionUpdate,
+)
 
 router = APIRouter(tags=["connections"])
 
@@ -112,3 +119,89 @@ async def list_tables(
         )
 
     return {"tables": tables}
+
+
+@router.get("/connections", response_model=list[ConnectionResponse])
+async def list_connections(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all connections for the user's organization."""
+    result = await db.execute(select(Organization).where(Organization.owner_id == user.id))
+    org = result.scalar_one_or_none()
+    if not org:
+        return []
+
+    result = await db.execute(
+        select(Connection)
+        .where(Connection.org_id == org.id)
+        .order_by(Connection.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.get("/connections/{connection_id}", response_model=ConnectionResponse)
+async def get_connection(
+    connection_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single connection by ID."""
+    result = await db.execute(select(Connection).where(Connection.id == connection_id))
+    connection = result.scalar_one_or_none()
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return connection
+
+
+@router.patch("/connections/{connection_id}", response_model=ConnectionResponse)
+async def update_connection(
+    connection_id: UUID,
+    payload: ConnectionUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a connection's name, credentials, or config."""
+    result = await db.execute(select(Connection).where(Connection.id == connection_id))
+    connection = result.scalar_one_or_none()
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    if payload.name is not None:
+        connection.name = payload.name
+    if payload.credentials is not None or payload.config is not None:
+        current_config = connection.config or {}
+        if payload.credentials is not None:
+            current_config.update(payload.credentials)
+        if payload.config is not None:
+            current_config.update(payload.config)
+        connection.config = current_config
+        connection.status = "pending"
+
+    await db.flush()
+    await db.refresh(connection)
+    return connection
+
+
+@router.delete("/connections/{connection_id}", status_code=204)
+async def delete_connection(
+    connection_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a connection and its monitored tables."""
+    result = await db.execute(
+        select(Connection)
+        .where(Connection.id == connection_id)
+        .options(selectinload(Connection.monitored_tables))
+    )
+    connection = result.scalar_one_or_none()
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    # Delete associated monitored tables first
+    for table in connection.monitored_tables:
+        await db.delete(table)
+
+    await db.delete(connection)
+    await db.flush()
