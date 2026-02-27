@@ -41,3 +41,31 @@ class TableHealthResponse(BaseModel):
     latest_schema: list[SchemaColumnInfo] | None = None
     open_alerts_count: int = 0
     last_checked_at: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# Scheduling
+# ---------------------------------------------------------------------------
+
+VALID_FREQUENCIES = {"hourly", "every_6h", "every_12h", "daily", "weekly"}
+
+
+class ScheduleUpdateRequest(BaseModel):
+    check_frequency: str | None = Field(
+        None,
+        description="Check frequency: hourly, every_6h, every_12h, daily, weekly",
+    )
+    is_active: bool | None = Field(None, description="Enable or disable monitoring")
+
+
+class ScheduleResponse(BaseModel):
+    id: UUID
+    connection_id: UUID
+    schema_name: str
+    table_name: str
+    check_frequency: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}

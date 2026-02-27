@@ -11,7 +11,14 @@ from app.models.check_result import CheckResult
 from app.models.monitored_table import MonitoredTable
 from app.models.schema_snapshot import SchemaSnapshot
 from app.models.user import User
-from app.schemas.table import MonitoredTableResponse, MonitorTablesRequest, TableHealthResponse
+from app.schemas.table import (
+    VALID_FREQUENCIES,
+    MonitoredTableResponse,
+    MonitorTablesRequest,
+    ScheduleResponse,
+    ScheduleUpdateRequest,
+    TableHealthResponse,
+)
 
 router = APIRouter(tags=["tables"])
 
@@ -109,3 +116,52 @@ async def get_schema_history(
         }
         for s in snapshots
     ]
+
+
+# ---------------------------------------------------------------------------
+# Scheduling configuration
+# ---------------------------------------------------------------------------
+
+
+@router.get("/tables/{table_id}/schedule", response_model=ScheduleResponse)
+async def get_table_schedule(
+    table_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the scheduling configuration for a monitored table."""
+    result = await db.execute(select(MonitoredTable).where(MonitoredTable.id == table_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Monitored table not found")
+    return table
+
+
+@router.patch("/tables/{table_id}/schedule", response_model=ScheduleResponse)
+async def update_table_schedule(
+    table_id: UUID,
+    payload: ScheduleUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update the check frequency and/or active status for a monitored table."""
+    result = await db.execute(select(MonitoredTable).where(MonitoredTable.id == table_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Monitored table not found")
+
+    if payload.check_frequency is not None:
+        if payload.check_frequency not in VALID_FREQUENCIES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid frequency '{payload.check_frequency}'. "
+                f"Must be one of: {', '.join(sorted(VALID_FREQUENCIES))}",
+            )
+        table.check_frequency = payload.check_frequency
+
+    if payload.is_active is not None:
+        table.is_active = payload.is_active
+
+    await db.flush()
+    await db.refresh(table)
+    return table
