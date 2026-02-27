@@ -106,6 +106,30 @@ def run_scheduled_checks():
     logger.info("Scheduled check run complete")
 
 
+# Map check_frequency values to the minimum interval between checks.
+FREQUENCY_INTERVALS: dict[str, timedelta] = {
+    "hourly": timedelta(hours=1),
+    "every_6h": timedelta(hours=6),
+    "every_12h": timedelta(hours=12),
+    "daily": timedelta(hours=24),
+    "weekly": timedelta(weeks=1),
+}
+
+
+def _is_table_due(table: MonitoredTable, last_check_at: datetime | None, now: datetime) -> bool:
+    """Return True if *table* is due for its next check run."""
+    interval = FREQUENCY_INTERVALS.get(table.check_frequency)
+    if interval is None:
+        # Unknown frequency — treat like "daily" as a safe default
+        interval = FREQUENCY_INTERVALS["daily"]
+
+    if last_check_at is None:
+        # Never checked before — always due
+        return True
+
+    return (now - last_check_at) >= interval
+
+
 async def _dispatch_scheduled_checks():
     async with async_session_factory() as db:
         result = await db.execute(
@@ -113,8 +137,30 @@ async def _dispatch_scheduled_checks():
         )
         tables = result.scalars().all()
 
+        now = datetime.now(timezone.utc)
         dispatched = 0
+
         for table in tables:
+            # Find the most recent check result for this table
+            last_result = await db.execute(
+                select(CheckResult.measured_at)
+                .where(CheckResult.table_id == table.id)
+                .order_by(CheckResult.measured_at.desc())
+                .limit(1)
+            )
+            row = last_result.first()
+            last_check_at = row[0] if row else None
+
+            if not _is_table_due(table, last_check_at, now):
+                logger.debug(
+                    "Skipping %s.%s (frequency=%s, last_check=%s)",
+                    table.schema_name,
+                    table.table_name,
+                    table.check_frequency,
+                    last_check_at,
+                )
+                continue
+
             table_id = str(table.id)
             run_schema_check.delay(table_id)
             run_row_count_check.delay(table_id)
