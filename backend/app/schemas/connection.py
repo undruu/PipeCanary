@@ -24,6 +24,12 @@ class ConnectionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ConnectionUpdate(BaseModel):
+    name: str | None = Field(None, max_length=255)
+    credentials: dict | None = Field(None, description="Updated credential fields")
+    config: dict | None = Field(None, description="Updated config fields")
+
+
 class ConnectionTestResult(BaseModel):
     success: bool
     message: str
