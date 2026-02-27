@@ -120,16 +120,47 @@ export const authApi = {
   getMe: () => request<{ id: string; email: string; name: string; plan_tier: string; created_at: string }>("/auth/me"),
 };
 
+export interface ConnectionData {
+  id: string;
+  org_id: string;
+  type: string;
+  name: string;
+  status: string;
+  config: Record<string, unknown> | null;
+  last_tested_at: string | null;
+  created_at: string;
+}
+
+export interface ConnectionTestResultData {
+  success: boolean;
+  message: string;
+  tested_at: string;
+}
+
 export const api = {
   // Connections
+  listConnections: () =>
+    request<ConnectionData[]>("/connections"),
+
+  getConnection: (id: string) =>
+    request<ConnectionData>(`/connections/${id}`),
+
   createConnection: (data: Record<string, unknown>) =>
-    request("/connections", { method: "POST", body: JSON.stringify(data) }),
+    request<ConnectionData>("/connections", { method: "POST", body: JSON.stringify(data) }),
+
+  updateConnection: (id: string, data: Record<string, unknown>) =>
+    request<ConnectionData>(`/connections/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  deleteConnection: (id: string) =>
+    request<void>(`/connections/${id}`, { method: "DELETE" }),
 
   testConnection: (id: string) =>
-    request(`/connections/${id}/test`, { method: "POST" }),
+    request<ConnectionTestResultData>(`/connections/${id}/test`, { method: "POST" }),
 
-  listTables: (connectionId: string) =>
-    request(`/connections/${connectionId}/tables`),
+  listTables: (connectionId: string, schema: string) =>
+    request<{ tables: Array<{ table_name: string; table_type: string; row_count: number }> }>(
+      `/connections/${connectionId}/tables?schema=${encodeURIComponent(schema)}`
+    ),
 
   // Monitored Tables
   addMonitoredTables: (data: Record<string, unknown>) =>
