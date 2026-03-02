@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -74,7 +74,7 @@ async def test_connection(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         # SDK not installed or other init error — return as test failure
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         connection.status = "failed"
         connection.last_tested_at = now
         return ConnectionTestResult(
@@ -84,7 +84,7 @@ async def test_connection(
             tested_at=now,
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
     error_detail = None
     try:
