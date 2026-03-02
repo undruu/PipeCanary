@@ -48,7 +48,13 @@ function Connections() {
   }, [fetchConnections]);
 
   function handleCreated(connection: ConnectionData) {
-    setConnections((prev) => [connection, ...prev]);
+    setConnections((prev) => {
+      const exists = prev.some((c) => c.id === connection.id);
+      if (exists) {
+        return prev.map((c) => (c.id === connection.id ? connection : c));
+      }
+      return [connection, ...prev];
+    });
   }
 
   async function handleTest(connection: ConnectionData) {
