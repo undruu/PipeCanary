@@ -92,8 +92,8 @@ class TestTestConnection:
     async def test_failure_on_exception(self, connector):
         with patch.object(connector, "_execute") as mock_exec:
             mock_exec.side_effect = Exception("Connection refused")
-            result = await connector.test_connection()
-            assert result is False
+            with pytest.raises(Exception, match="Connection refused"):
+                await connector.test_connection()
 
     async def test_failure_on_empty_result(self, connector):
         with patch.object(connector, "_execute") as mock_exec:

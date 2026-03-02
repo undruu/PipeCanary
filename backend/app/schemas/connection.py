@@ -33,4 +33,5 @@ class ConnectionUpdate(BaseModel):
 class ConnectionTestResult(BaseModel):
     success: bool
     message: str
+    error_detail: str | None = None
     tested_at: datetime

@@ -134,6 +134,7 @@ export interface ConnectionData {
 export interface ConnectionTestResultData {
   success: boolean;
   message: string;
+  error_detail: string | null;
   tested_at: string;
 }
 

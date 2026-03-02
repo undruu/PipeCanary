@@ -75,10 +75,12 @@ async def test_connection(
 
     now = datetime.now(timezone.utc)
 
+    error_detail = None
     try:
         success = await connector.test_connection()
-    except Exception:
+    except Exception as e:
         success = False
+        error_detail = str(e)
 
     connection.status = "active" if success else "failed"
     connection.last_tested_at = now
@@ -87,6 +89,7 @@ async def test_connection(
     return ConnectionTestResult(
         success=success,
         message=message,
+        error_detail=error_detail,
         tested_at=now,
     )
 

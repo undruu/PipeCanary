@@ -39,7 +39,7 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
   const [fields, setFields] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; error_detail: string | null } | null>(null);
 
   function reset() {
     setStep("type");
@@ -253,6 +253,11 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
               <p className={`font-medium ${testResult.success ? "text-green-700" : "text-red-700"}`}>
                 {testResult.message}
               </p>
+              {testResult.error_detail && (
+                <p className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3 text-left font-mono whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+                  {testResult.error_detail}
+                </p>
+              )}
               <div className="mt-6">
                 <button
                   onClick={handleClose}
