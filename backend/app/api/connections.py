@@ -72,6 +72,17 @@ async def test_connection(
         connector = get_connector_for_connection(connection)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # SDK not installed or other init error — return as test failure
+        now = datetime.now(timezone.utc)
+        connection.status = "failed"
+        connection.last_tested_at = now
+        return ConnectionTestResult(
+            success=False,
+            message="Connection test failed",
+            error_detail=str(e),
+            tested_at=now,
+        )
 
     now = datetime.now(timezone.utc)
 
