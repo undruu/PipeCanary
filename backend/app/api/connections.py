@@ -68,15 +68,11 @@ async def test_connection(
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
 
-    try:
-        connector = get_connector_for_connection(connection)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
     now = datetime.now(timezone.utc)
 
     error_detail = None
     try:
+        connector = get_connector_for_connection(connection)
         success = await connector.test_connection()
     except Exception as e:
         success = False

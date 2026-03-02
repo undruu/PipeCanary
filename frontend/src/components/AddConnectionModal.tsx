@@ -106,13 +106,24 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
         config: Object.keys(config).length > 0 ? config : null,
       });
 
-      // Now test the connection
-      const result = await api.testConnection(connection.id);
-      setTestResult(result);
+      // Connection created — notify parent so it appears in the list
+      onCreated(connection);
 
-      // Refresh connection to get updated status
-      const updated = await api.getConnection(connection.id);
-      onCreated(updated);
+      // Now test the connection
+      try {
+        const result = await api.testConnection(connection.id);
+        setTestResult(result);
+
+        // Refresh connection to get updated status
+        const updated = await api.getConnection(connection.id);
+        onCreated(updated);
+      } catch (testErr) {
+        setTestResult({
+          success: false,
+          message: testErr instanceof Error ? testErr.message : "Connection test failed",
+          error_detail: null,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create connection");
       setStep("credentials");
