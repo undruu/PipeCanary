@@ -67,6 +67,7 @@ function Connections() {
       setTestResult({
         success: false,
         message: err instanceof Error ? err.message : "Test failed",
+        error_detail: null,
         tested_at: new Date().toISOString(),
       });
     } finally {
