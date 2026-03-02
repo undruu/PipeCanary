@@ -75,6 +75,7 @@ class TestTestConnection:
         data = response.json()
         assert data["success"] is True
         assert "successful" in data["message"]
+        assert data["error_detail"] is None
         assert fake_connection.status == "active"
 
     async def test_connection_not_found(self, override_deps, mock_db):
@@ -110,6 +111,32 @@ class TestTestConnection:
         data = response.json()
         assert data["success"] is False
         assert "failed" in data["message"]
+        assert data["error_detail"] is None
+        assert fake_connection.status == "failed"
+
+    async def test_failed_connection_with_error_detail(self, override_deps, mock_db, fake_connection):
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = fake_connection
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.api.connections.get_connector_for_connection") as mock_factory:
+            mock_connector = AsyncMock()
+            mock_connector.test_connection = AsyncMock(
+                side_effect=Exception("250001: Could not connect to Snowflake backend")
+            )
+            mock_factory.return_value = mock_connector
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    f"{API_PREFIX}/connections/{fake_connection.id}/test"
+                )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "failed" in data["message"]
+        assert "Could not connect to Snowflake" in data["error_detail"]
         assert fake_connection.status == "failed"
 
     async def test_unsupported_connector_type(self, override_deps, mock_db, fake_connection):

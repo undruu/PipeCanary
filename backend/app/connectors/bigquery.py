@@ -54,12 +54,12 @@ class BigQueryConnector(WarehouseConnector):
         return await loop.run_in_executor(None, self._query_sync, query, params)
 
     async def test_connection(self) -> bool:
-        """Validate credentials by running a simple query."""
-        try:
-            result = await self._execute("SELECT 1")
-            return len(result) > 0
-        except Exception:
-            return False
+        """Validate credentials by running a simple query.
+
+        Raises on failure so callers can inspect the error.
+        """
+        result = await self._execute("SELECT 1")
+        return len(result) > 0
 
     async def get_tables(self, schema: str) -> list[dict[str, Any]]:
         """List available tables in a dataset (schema).
