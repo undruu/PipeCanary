@@ -30,7 +30,7 @@ function SelectTables() {
     setSelected(new Set());
 
     try {
-      const data = await api.listTables(connectionId, schema.trim());
+      const data = await api.listWarehouseTables(connectionId, schema.trim());
       setTables(data.tables);
       setFetched(true);
     } catch (err) {
