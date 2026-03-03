@@ -17,6 +17,10 @@ class BigQueryConnector(WarehouseConnector):
         credentials_path: str | None = None,
         location: str | None = None,
     ):
+        # Fall back to the project_id embedded in the service account JSON
+        # when the caller-supplied project is empty or missing.
+        if not project and credentials_info:
+            project = credentials_info.get("project_id", "")
         self.project = project
         self.credentials_info = credentials_info
         self.credentials_path = credentials_path
@@ -24,7 +28,7 @@ class BigQueryConnector(WarehouseConnector):
 
     def _get_client(self) -> bigquery.Client:
         """Build a BigQuery client with the configured credentials."""
-        if self.credentials_info:
+        if self.credentials_info is not None:
             creds = service_account.Credentials.from_service_account_info(self.credentials_info)
         elif self.credentials_path:
             creds = service_account.Credentials.from_service_account_file(self.credentials_path)
