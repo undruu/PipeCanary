@@ -69,3 +69,47 @@ class ScheduleResponse(BaseModel):
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# List tables with health summary
+# ---------------------------------------------------------------------------
+
+
+class TableListItem(BaseModel):
+    id: UUID
+    connection_id: UUID
+    connection_name: str
+    schema_name: str
+    table_name: str
+    check_frequency: str
+    is_active: bool
+    open_alerts_count: int = 0
+    latest_row_count: float | None = None
+    last_checked_at: datetime | None = None
+    created_at: datetime
+
+
+class CheckResultResponse(BaseModel):
+    id: UUID
+    table_id: UUID
+    check_type: str
+    column_name: str | None = None
+    value: float
+    measured_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Dashboard summary
+# ---------------------------------------------------------------------------
+
+
+class DashboardSummary(BaseModel):
+    active_connections: int = 0
+    monitored_tables: int = 0
+    open_alerts: int = 0
+    critical_alerts: int = 0
+    warning_alerts: int = 0
+    last_check_at: datetime | None = None
