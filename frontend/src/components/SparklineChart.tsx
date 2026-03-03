@@ -1,4 +1,5 @@
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
+import type { ReactNode } from "react";
 
 interface SparklineChartProps {
   data: Array<{ value: number; label?: string }>;
@@ -17,9 +18,8 @@ function SparklineChart({ data, color = "#d97706", height = 32 }: SparklineChart
         <LineChart data={data}>
           <Tooltip
             formatter={(value: number | undefined) => [value != null ? value.toLocaleString() : "—", "Value"]}
-            labelFormatter={(_, payload) => {
-              const item = payload?.[0]?.payload as { label?: string } | undefined;
-              return item?.label ?? "";
+            labelFormatter={(_: ReactNode, payload: readonly { payload?: { label?: string } }[]) => {
+              return payload?.[0]?.payload?.label ?? "";
             }}
             contentStyle={{ fontSize: 12, padding: "4px 8px" }}
           />
