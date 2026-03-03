@@ -3,8 +3,7 @@ import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Connections from "./pages/Connections";
-import Tables from "./pages/Tables";
-import TableDetail from "./pages/TableDetail";
+import SelectTables from "./pages/SelectTables";
 import Alerts from "./pages/Alerts";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -24,8 +23,7 @@ function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="connections" element={<Connections />} />
-        <Route path="tables" element={<Tables />} />
-        <Route path="tables/:id" element={<TableDetail />} />
+        <Route path="connections/:connectionId/select-tables" element={<SelectTables />} />
         <Route path="alerts" element={<Alerts />} />
       </Route>
     </Routes>

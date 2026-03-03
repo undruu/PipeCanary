@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, type ConnectionData, type ConnectionTestResultData } from "@/api/client";
 import StatusBadge from "@/components/StatusBadge";
 import AddConnectionModal from "@/components/AddConnectionModal";
@@ -22,6 +23,7 @@ function formatDate(dateStr: string | null) {
 }
 
 function Connections() {
+  const navigate = useNavigate();
   const [connections, setConnections] = useState<ConnectionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -224,6 +226,7 @@ function Connections() {
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
         onCreated={handleCreated}
+        onSelectTables={(id) => navigate(`/connections/${id}/select-tables`)}
       />
 
       {/* Connection Detail Modal */}

@@ -6,6 +6,7 @@ interface AddConnectionModalProps {
   open: boolean;
   onClose: () => void;
   onCreated: (connection: ConnectionData) => void;
+  onSelectTables?: (connectionId: string) => void;
 }
 
 type WarehouseType = "snowflake" | "bigquery";
@@ -32,7 +33,7 @@ const bigqueryFields = [
 
 type Step = "type" | "credentials" | "testing";
 
-function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProps) {
+function AddConnectionModal({ open, onClose, onCreated, onSelectTables }: AddConnectionModalProps) {
   const [step, setStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<WarehouseType | null>(null);
   const [name, setName] = useState("");
@@ -40,6 +41,7 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; error_detail: string | null } | null>(null);
+  const [createdConnectionId, setCreatedConnectionId] = useState<string | null>(null);
 
   function reset() {
     setStep("type");
@@ -49,6 +51,7 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
     setError("");
     setIsSubmitting(false);
     setTestResult(null);
+    setCreatedConnectionId(null);
   }
 
   function handleClose() {
@@ -121,6 +124,7 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
       });
 
       // Connection created — notify parent so it appears in the list
+      setCreatedConnectionId(connection.id);
       onCreated(connection);
 
       // Now test the connection
@@ -283,13 +287,35 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
                   {testResult.error_detail}
                 </p>
               )}
-              <div className="mt-6">
-                <button
-                  onClick={handleClose}
-                  className="px-4 py-2 text-sm font-medium text-white bg-canary-600 rounded-md hover:bg-canary-500"
-                >
-                  Done
-                </button>
+              <div className="mt-6 flex justify-center gap-3">
+                {testResult.success && onSelectTables && createdConnectionId ? (
+                  <>
+                    <button
+                      onClick={handleClose}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    >
+                      Skip
+                    </button>
+                    <button
+                      onClick={() => {
+                        const id = createdConnectionId;
+                        reset();
+                        onClose();
+                        onSelectTables(id);
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-white bg-canary-600 rounded-md hover:bg-canary-500"
+                    >
+                      Select Tables
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleClose}
+                    className="px-4 py-2 text-sm font-medium text-white bg-canary-600 rounded-md hover:bg-canary-500"
+                  >
+                    Done
+                  </button>
+                )}
               </div>
             </>
           )}
