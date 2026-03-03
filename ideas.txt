@@ -5,3 +5,5 @@ Owl = Statistical anomaly detection
 Duck = Schema drift 
 Seagull = Null issues 
 Cardinal = Unexpected cardinality shifts
+
+Add on prem connections

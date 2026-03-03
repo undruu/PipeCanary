@@ -138,6 +138,78 @@ export interface ConnectionTestResultData {
   tested_at: string;
 }
 
+export interface TableListItemData {
+  id: string;
+  connection_id: string;
+  connection_name: string;
+  schema_name: string;
+  table_name: string;
+  check_frequency: string;
+  is_active: boolean;
+  open_alerts_count: number;
+  latest_row_count: number | null;
+  last_checked_at: string | null;
+  created_at: string;
+}
+
+export interface TableHealthData {
+  table_id: string;
+  schema_name: string;
+  table_name: string;
+  latest_row_count: number | null;
+  latest_schema: Array<{ name: string; type: string; nullable: boolean }> | null;
+  open_alerts_count: number;
+  last_checked_at: string | null;
+}
+
+export interface CheckResultData {
+  id: string;
+  table_id: string;
+  check_type: string;
+  column_name: string | null;
+  value: number;
+  measured_at: string;
+}
+
+export interface SchemaSnapshotData {
+  id: string;
+  columns: Array<{ name: string; type: string; nullable: boolean }>;
+  captured_at: string | null;
+}
+
+export interface AlertData {
+  id: string;
+  table_id: string;
+  type: string;
+  severity: string;
+  status: string;
+  details_json: Record<string, unknown>;
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+export interface DashboardSummaryData {
+  active_connections: number;
+  monitored_tables: number;
+  open_alerts: number;
+  critical_alerts: number;
+  warning_alerts: number;
+  last_check_at: string | null;
+}
+
+export interface ScheduleData {
+  id: string;
+  connection_id: string;
+  schema_name: string;
+  table_name: string;
+  check_frequency: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export const api = {
   // Connections
   listConnections: () =>
@@ -158,29 +230,56 @@ export const api = {
   testConnection: (id: string) =>
     request<ConnectionTestResultData>(`/connections/${id}/test`, { method: "POST" }),
 
-  listTables: (connectionId: string, schema: string) =>
+  listWarehouseTables: (connectionId: string, schema: string) =>
     request<{ tables: Array<{ table_name: string; table_type: string; row_count: number }> }>(
       `/connections/${connectionId}/tables?schema=${encodeURIComponent(schema)}`
     ),
 
   // Monitored Tables
+  listMonitoredTables: (params?: { connection_id?: string; is_active?: boolean }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.connection_id) searchParams.set("connection_id", params.connection_id);
+    if (params?.is_active !== undefined) searchParams.set("is_active", String(params.is_active));
+    const qs = searchParams.toString();
+    return request<TableListItemData[]>(`/tables${qs ? `?${qs}` : ""}`);
+  },
+
   addMonitoredTables: (data: Record<string, unknown>) =>
-    request("/tables/monitor", { method: "POST", body: JSON.stringify(data) }),
+    request<TableListItemData[]>("/tables/monitor", { method: "POST", body: JSON.stringify(data) }),
 
   getTableHealth: (tableId: string) =>
-    request(`/tables/${tableId}/health`),
+    request<TableHealthData>(`/tables/${tableId}/health`),
+
+  getCheckResults: (tableId: string, params?: { check_type?: string; days?: number; column_name?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.check_type) searchParams.set("check_type", params.check_type);
+    if (params?.days) searchParams.set("days", String(params.days));
+    if (params?.column_name) searchParams.set("column_name", params.column_name);
+    const qs = searchParams.toString();
+    return request<CheckResultData[]>(`/tables/${tableId}/check-results${qs ? `?${qs}` : ""}`);
+  },
 
   getSchemaHistory: (tableId: string) =>
-    request(`/tables/${tableId}/schema/history`),
+    request<SchemaSnapshotData[]>(`/tables/${tableId}/schema/history`),
+
+  getTableSchedule: (tableId: string) =>
+    request<ScheduleData>(`/tables/${tableId}/schedule`),
+
+  updateTableSchedule: (tableId: string, data: { check_frequency?: string; is_active?: boolean }) =>
+    request<ScheduleData>(`/tables/${tableId}/schedule`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  // Dashboard
+  getDashboardSummary: () =>
+    request<DashboardSummaryData>("/dashboard/summary"),
 
   // Alerts
   listAlerts: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params);
-    return request(`/alerts?${searchParams}`);
+    return request<AlertData[]>(`/alerts?${searchParams}`);
   },
 
   updateAlert: (id: string, data: Record<string, unknown>) =>
-    request(`/alerts/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    request<AlertData>(`/alerts/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
 
   // Notifications
   updateNotificationConfig: (data: Record<string, unknown>) =>
