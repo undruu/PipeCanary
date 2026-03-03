@@ -63,7 +63,21 @@ function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProp
   }
 
   function setField(key: string, value: string) {
-    setFields((prev) => ({ ...prev, [key]: value }));
+    setFields((prev) => {
+      const updated = { ...prev, [key]: value };
+      // Auto-populate project from service account JSON when project is empty
+      if (key === "credentials_json" && selectedType === "bigquery" && !prev.project) {
+        try {
+          const parsed = JSON.parse(value);
+          if (parsed.project_id) {
+            updated.project = parsed.project_id;
+          }
+        } catch {
+          // ignore parse errors while user is still typing
+        }
+      }
+      return updated;
+    });
   }
 
   async function handleSubmit(e: FormEvent) {
