@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -131,7 +131,7 @@ async def get_check_results(
     db: AsyncSession = Depends(get_db),
 ):
     """Return check results for a table within a time window."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.utcnow() - timedelta(days=days)
     query = (
         select(CheckResult)
         .where(
