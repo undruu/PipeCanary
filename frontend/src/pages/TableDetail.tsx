@@ -72,18 +72,21 @@ function TableDetail() {
     if (!id) return;
     setLoading(true);
     try {
-      const [healthData, scheduleData, rowCounts, nullRates, schemas, alertsData] =
-        await Promise.all([
-          api.getTableHealth(id),
-          api.getTableSchedule(id),
-          api.getCheckResults(id, { check_type: "row_count", days: 14 }),
-          api.getCheckResults(id, { check_type: "null_rate", days: 14 }),
-          api.getSchemaHistory(id),
-          api.listAlerts({ table_id: id, limit: "20" }),
-        ]);
+      const [healthData, scheduleData] = await Promise.all([
+        api.getTableHealth(id),
+        api.getTableSchedule(id),
+      ]);
       setHealth(healthData);
       setSchedule(scheduleData);
       setEditFrequency(scheduleData.check_frequency);
+
+      // Non-critical fetches — fail gracefully so the page still renders
+      const [rowCounts, nullRates, schemas, alertsData] = await Promise.all([
+        api.getCheckResults(id, { check_type: "row_count", days: 14 }).catch(() => []),
+        api.getCheckResults(id, { check_type: "null_rate", days: 14 }).catch(() => []),
+        api.getSchemaHistory(id).catch(() => []),
+        api.listAlerts({ table_id: id, limit: "20" }).catch(() => []),
+      ]);
       setRowCountHistory(rowCounts);
       setNullRateData(nullRates);
       setSchemaHistory(schemas);
