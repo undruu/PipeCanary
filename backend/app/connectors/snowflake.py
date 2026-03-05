@@ -44,7 +44,7 @@ class SnowflakeConnector(WarehouseConnector):
             params["role"] = self.role
         return params
 
-    def _execute_sync(self, query: str, params: dict | None = None) -> list[tuple]:
+    def _execute_sync(self, query: str, params: tuple | None = None) -> list[tuple]:
         """Execute a query synchronously against Snowflake."""
         conn = snowflake.connector.connect(**self._get_connection_params())
         try:
@@ -54,7 +54,7 @@ class SnowflakeConnector(WarehouseConnector):
         finally:
             conn.close()
 
-    async def _execute(self, query: str, params: dict | None = None) -> list[tuple]:
+    async def _execute(self, query: str, params: tuple | None = None) -> list[tuple]:
         """Execute a query in a thread pool to avoid blocking the event loop."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._execute_sync, query, params)
@@ -73,7 +73,7 @@ class SnowflakeConnector(WarehouseConnector):
             "SELECT TABLE_NAME, TABLE_TYPE, ROW_COUNT "
             "FROM INFORMATION_SCHEMA.TABLES "
             "WHERE TABLE_SCHEMA = %s ORDER BY TABLE_NAME",
-            {"1": schema.upper()},
+            (schema.upper(),),
         )
         return [
             {"table_name": row[0], "table_type": row[1], "row_count": row[2]}
@@ -91,7 +91,7 @@ class SnowflakeConnector(WarehouseConnector):
                 "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s "
                 "ORDER BY ORDINAL_POSITION"
             )
-            rows = await self._execute(query, {"1": schema.upper(), "2": table_name.upper()})
+            rows = await self._execute(query, (schema.upper(), table_name.upper()))
         else:
             query = (
                 "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE "
@@ -99,7 +99,7 @@ class SnowflakeConnector(WarehouseConnector):
                 "WHERE TABLE_NAME = %s "
                 "ORDER BY ORDINAL_POSITION"
             )
-            rows = await self._execute(query, {"1": table.upper()})
+            rows = await self._execute(query, (table.upper(),))
 
         return [
             {"name": row[0], "type": row[1], "nullable": row[2] == "YES"}
