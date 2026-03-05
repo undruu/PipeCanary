@@ -268,6 +268,9 @@ export const api = {
   updateTableSchedule: (tableId: string, data: { check_frequency?: string; is_active?: boolean }) =>
     request<ScheduleData>(`/tables/${tableId}/schedule`, { method: "PATCH", body: JSON.stringify(data) }),
 
+  runChecksNow: (tableId: string) =>
+    request<{ detail: string; table_id: string }>(`/tables/${tableId}/run-checks`, { method: "POST" }),
+
   // Dashboard
   getDashboardSummary: () =>
     request<DashboardSummaryData>("/dashboard/summary"),
