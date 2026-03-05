@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -10,7 +10,7 @@ from app.anomaly.detector import AnomalyDetector
 from app.celery_app import celery_app
 from app.config import settings
 from app.connectors import get_connector_for_connection
-from app.database import async_session_factory
+from app.database import task_session
 from app.models.alert import Alert
 from app.models.check_result import CheckResult
 from app.models.connection import Connection
@@ -131,13 +131,13 @@ def _is_table_due(table: MonitoredTable, last_check_at: datetime | None, now: da
 
 
 async def _dispatch_scheduled_checks():
-    async with async_session_factory() as db:
+    async with task_session() as db:
         result = await db.execute(
             select(MonitoredTable).where(MonitoredTable.is_active.is_(True))
         )
         tables = result.scalars().all()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         dispatched = 0
 
         for table in tables:
@@ -193,7 +193,7 @@ def run_schema_check(self, table_id: str):
 
 
 async def _do_schema_check(table_id: str):
-    async with async_session_factory() as db:
+    async with task_session() as db:
         try:
             table, connection = await _load_table_with_connection(db, table_id)
             connector = get_connector_for_connection(connection)
@@ -231,7 +231,7 @@ def run_row_count_check(self, table_id: str):
 
 
 async def _do_row_count_check(table_id: str):
-    async with async_session_factory() as db:
+    async with task_session() as db:
         try:
             table, connection = await _load_table_with_connection(db, table_id)
             connector = get_connector_for_connection(connection)
@@ -251,7 +251,7 @@ async def _do_row_count_check(table_id: str):
             await db.flush()
 
             # 3. Fetch historical counts (14-day trailing window, excluding the one we just inserted)
-            cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+            cutoff = datetime.utcnow() - timedelta(days=14)
             history_result = await db.execute(
                 select(CheckResult.value)
                 .where(
@@ -318,7 +318,7 @@ def run_null_rate_check(self, table_id: str):
 
 
 async def _do_null_rate_check(table_id: str):
-    async with async_session_factory() as db:
+    async with task_session() as db:
         try:
             table, connection = await _load_table_with_connection(db, table_id)
             connector = get_connector_for_connection(connection)
@@ -356,7 +356,7 @@ async def _do_null_rate_check(table_id: str):
                 new_result_ids.append(check_result.id)
 
             # 4. For each column, fetch 7-day historical rates and detect anomalies
-            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+            cutoff = datetime.utcnow() - timedelta(days=7)
             anomalies_found = []
 
             for col_name in column_names:
