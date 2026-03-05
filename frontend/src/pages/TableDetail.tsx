@@ -67,6 +67,7 @@ function TableDetail() {
   const [error, setError] = useState("");
   const [editFrequency, setEditFrequency] = useState("");
   const [saving, setSaving] = useState(false);
+  const [runningChecks, setRunningChecks] = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
@@ -146,6 +147,21 @@ function TableDetail() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update alert");
+    }
+  }
+
+  async function handleRunChecks() {
+    if (!id) return;
+    setRunningChecks(true);
+    try {
+      await api.runChecksNow(id);
+      // Wait a few seconds for tasks to complete, then refresh data
+      setTimeout(() => {
+        fetchAll().finally(() => setRunningChecks(false));
+      }, 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to dispatch checks");
+      setRunningChecks(false);
     }
   }
 
@@ -231,6 +247,13 @@ function TableDetail() {
               {health.latest_row_count.toLocaleString()} rows
             </div>
           )}
+          <button
+            onClick={handleRunChecks}
+            disabled={runningChecks}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-canary-600 rounded-md hover:bg-canary-500 disabled:opacity-50"
+          >
+            {runningChecks ? "Running..." : "Run Check Now"}
+          </button>
         </div>
       </div>
 
