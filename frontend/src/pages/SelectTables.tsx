@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "@/api/client";
 
@@ -15,10 +15,28 @@ function SelectTables() {
   const [schema, setSchema] = useState("");
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [alreadyMonitored, setAlreadyMonitored] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fetched, setFetched] = useState(false);
+
+  // Fetch tables already monitored for this connection
+  const fetchMonitored = useCallback(async () => {
+    if (!connectionId) return;
+    try {
+      const monitored = await api.listMonitoredTables({ connection_id: connectionId });
+      setAlreadyMonitored(
+        new Set(monitored.map((t) => `${t.schema_name}.${t.table_name}`))
+      );
+    } catch {
+      // Non-critical
+    }
+  }, [connectionId]);
+
+  useEffect(() => {
+    fetchMonitored();
+  }, [fetchMonitored]);
 
   async function handleFetchTables(e: FormEvent) {
     e.preventDefault();
@@ -41,7 +59,14 @@ function SelectTables() {
     }
   }
 
+  function isMonitored(tableName: string) {
+    return alreadyMonitored.has(`${schema.trim()}.${tableName}`);
+  }
+
+  const selectableTables = tables.filter((t) => !isMonitored(t.table_name));
+
   function toggleTable(tableName: string) {
+    if (isMonitored(tableName)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(tableName)) {
@@ -54,10 +79,10 @@ function SelectTables() {
   }
 
   function toggleAll() {
-    if (selected.size === tables.length) {
+    if (selected.size === selectableTables.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(tables.map((t) => t.table_name)));
+      setSelected(new Set(selectableTables.map((t) => t.table_name)));
     }
   }
 
@@ -83,6 +108,8 @@ function SelectTables() {
       setSaving(false);
     }
   }
+
+  const monitoredCount = tables.filter((t) => isMonitored(t.table_name)).length;
 
   return (
     <div>
@@ -149,39 +176,60 @@ function SelectTables() {
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    checked={selected.size === tables.length}
+                    checked={selectableTables.length > 0 && selected.size === selectableTables.length}
+                    disabled={selectableTables.length === 0}
                     onChange={toggleAll}
                     className="h-4 w-4 rounded border-gray-300 text-canary-600 focus:ring-canary-500"
                   />
                   <span className="text-sm text-gray-700">
-                    {selected.size} of {tables.length} tables selected
+                    {selected.size} of {selectableTables.length} new tables selected
+                    {monitoredCount > 0 && (
+                      <span className="text-gray-400 ml-1">
+                        ({monitoredCount} already monitored)
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
 
               <ul className="divide-y divide-gray-200">
-                {tables.map((table) => (
-                  <li
-                    key={table.table_name}
-                    onClick={() => toggleTable(table.table_name)}
-                    className="flex items-center gap-4 px-6 py-3 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selected.has(table.table_name)}
-                      onChange={() => toggleTable(table.table_name)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-4 w-4 rounded border-gray-300 text-canary-600 focus:ring-canary-500"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{table.table_name}</p>
-                      <p className="text-xs text-gray-500">{table.table_type}</p>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {table.row_count.toLocaleString()} rows
-                    </span>
-                  </li>
-                ))}
+                {tables.map((table) => {
+                  const monitored = isMonitored(table.table_name);
+                  return (
+                    <li
+                      key={table.table_name}
+                      onClick={() => toggleTable(table.table_name)}
+                      className={`flex items-center gap-4 px-6 py-3 ${
+                        monitored
+                          ? "bg-gray-50 opacity-60 cursor-default"
+                          : "hover:bg-gray-50 cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={monitored || selected.has(table.table_name)}
+                        disabled={monitored}
+                        onChange={() => toggleTable(table.table_name)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 rounded border-gray-300 text-canary-600 focus:ring-canary-500 disabled:opacity-50"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {table.table_name}
+                          {monitored && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                              Monitored
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500">{table.table_type}</p>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {table.row_count.toLocaleString()} rows
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
 
               <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">

@@ -246,9 +246,19 @@ async def add_monitored_tables(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Add tables to monitoring."""
+    """Add tables to monitoring, skipping any that are already monitored."""
+    # Find which tables are already monitored for this connection
+    existing_result = await db.execute(
+        select(MonitoredTable.schema_name, MonitoredTable.table_name).where(
+            MonitoredTable.connection_id == payload.connection_id
+        )
+    )
+    existing_keys = {(row.schema_name, row.table_name) for row in existing_result}
+
     tables = []
     for item in payload.tables:
+        if (item.schema_name, item.table_name) in existing_keys:
+            continue
         table = MonitoredTable(
             connection_id=payload.connection_id,
             schema_name=item.schema_name,
@@ -258,9 +268,10 @@ async def add_monitored_tables(
         db.add(table)
         tables.append(table)
 
-    await db.flush()
-    for t in tables:
-        await db.refresh(t)
+    if tables:
+        await db.flush()
+        for t in tables:
+            await db.refresh(t)
     return tables
 
 
