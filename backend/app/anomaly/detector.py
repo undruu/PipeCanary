@@ -81,7 +81,7 @@ class AnomalyDetector:
             historical_rates: Historical null rates (trailing 7-day window).
             multiplier_threshold: Alert if current rate exceeds this multiple of the baseline.
         """
-        if len(historical_rates) < 2:
+        if len(historical_rates) < 1:
             return AnomalyResult(
                 is_anomaly=False,
                 current_value=current_rate,
@@ -92,7 +92,7 @@ class AnomalyDetector:
 
         arr = np.array(historical_rates)
         mean = float(np.mean(arr))
-        std = float(np.std(arr, ddof=1))
+        std = float(np.std(arr, ddof=1)) if len(arr) > 1 else 0.0
 
         if mean == 0:
             is_anomaly = current_rate > 0
@@ -107,7 +107,7 @@ class AnomalyDetector:
 
         pct_change = current_rate / mean
 
-        is_anomaly = pct_change > multiplier_threshold
+        is_anomaly = pct_change >= multiplier_threshold
 
         return AnomalyResult(
             is_anomaly=is_anomaly,
