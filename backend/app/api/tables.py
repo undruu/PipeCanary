@@ -406,13 +406,14 @@ async def run_checks_now(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Dispatch all check tasks (schema, row count, null rate) for a table immediately."""
+    """Dispatch all check tasks (schema, row count, null rate, cardinality) for a table immediately."""
     result = await db.execute(select(MonitoredTable).where(MonitoredTable.id == table_id))
     table = result.scalar_one_or_none()
     if not table:
         raise HTTPException(status_code=404, detail="Monitored table not found")
 
     from app.tasks.monitoring import (
+        run_cardinality_check,
         run_null_rate_check,
         run_row_count_check,
         run_schema_check,
@@ -422,5 +423,6 @@ async def run_checks_now(
     run_schema_check.delay(tid)
     run_row_count_check.delay(tid)
     run_null_rate_check.delay(tid)
+    run_cardinality_check.delay(tid)
 
     return {"detail": "Checks dispatched", "table_id": tid}

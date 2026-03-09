@@ -126,8 +126,41 @@ class AnomalyDetector:
     ) -> AnomalyResult:
         """Detect cardinality anomalies (sudden drops or spikes in distinct values).
 
-        Uses the same z-score approach as row count detection.
+        Uses z-score against a trailing window, same approach as row count.
         """
-        return AnomalyDetector.detect_row_count_anomaly(
-            current_count, historical_counts, z_threshold
+        if len(historical_counts) < 2:
+            return AnomalyResult(
+                is_anomaly=False,
+                current_value=current_count,
+                baseline_mean=current_count,
+                baseline_std=0,
+                message="Insufficient history for anomaly detection",
+            )
+
+        arr = np.array(historical_counts)
+        mean = float(np.mean(arr))
+        std = float(np.std(arr, ddof=1))
+
+        if std == 0:
+            is_anomaly = current_count != mean
+            return AnomalyResult(
+                is_anomaly=is_anomaly,
+                current_value=current_count,
+                baseline_mean=mean,
+                baseline_std=std,
+                z_score=None,
+                message="Cardinality changed from a previously constant value" if is_anomaly else "Stable",
+            )
+
+        z_score = (current_count - mean) / std
+        is_anomaly = abs(z_score) > z_threshold
+        direction = "above" if z_score > 0 else "below"
+
+        return AnomalyResult(
+            is_anomaly=is_anomaly,
+            current_value=current_count,
+            baseline_mean=mean,
+            baseline_std=std,
+            z_score=float(z_score),
+            message=f"Cardinality is {abs(z_score):.1f} std devs {direction} the mean" if is_anomaly else "Normal",
         )
