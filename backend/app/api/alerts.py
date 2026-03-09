@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -52,7 +52,7 @@ async def update_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
     if payload.status == "acknowledged":
         alert.status = "acknowledged"
