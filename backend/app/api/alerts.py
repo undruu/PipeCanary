@@ -63,6 +63,11 @@ async def update_alert(
         alert.resolved_at = now
     elif payload.status == "snoozed":
         alert.status = "snoozed"
+    elif payload.status == "open":
+        alert.status = "open"
+        alert.acknowledged_by = None
+        alert.acknowledged_at = None
+        alert.resolved_at = None
     else:
         raise HTTPException(status_code=400, detail=f"Invalid status: {payload.status}")
 
