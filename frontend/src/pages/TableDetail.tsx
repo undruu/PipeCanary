@@ -20,6 +20,7 @@ import {
   type ScheduleData,
 } from "@/api/client";
 import HealthIndicator from "@/components/HealthIndicator";
+import AlertCard from "@/components/AlertCard";
 
 const VALID_FREQUENCIES = ["hourly", "every_6h", "every_12h", "daily", "weekly"];
 const frequencyLabels: Record<string, string> = {
@@ -39,17 +40,6 @@ function formatDate(dateStr: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 type Tab = "schema" | "row_count" | "null_rate" | "alerts" | "schedule";
@@ -497,157 +487,5 @@ function TableDetail() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Alert card sub-component
-// ---------------------------------------------------------------------------
-
-const alertTypeColors: Record<string, string> = {
-  schema_drift: "border-l-purple-500",
-  row_count: "border-l-blue-500",
-  null_rate: "border-l-orange-500",
-  cardinality: "border-l-teal-500",
-};
-
-const alertTypeLabels: Record<string, string> = {
-  schema_drift: "Schema Drift",
-  row_count: "Row Count",
-  null_rate: "Null Rate",
-  cardinality: "Cardinality",
-};
-
-const severityStyles: Record<string, string> = {
-  warning: "bg-yellow-100 text-yellow-800",
-  critical: "bg-red-100 text-red-800",
-};
-
-const statusStyles: Record<string, string> = {
-  open: "bg-blue-100 text-blue-800",
-  acknowledged: "bg-purple-100 text-purple-800",
-  resolved: "bg-green-100 text-green-800",
-  snoozed: "bg-gray-100 text-gray-800",
-};
-
-function AlertCard({
-  alert,
-  onAction,
-}: {
-  alert: AlertData;
-  onAction: (id: string, status: string) => void;
-}) {
-  return (
-    <div
-      className={`bg-white shadow rounded-lg border-l-4 p-4 ${
-        alertTypeColors[alert.type] ?? "border-l-gray-400"
-      }`}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-gray-900">
-              {alertTypeLabels[alert.type] ?? alert.type}
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                severityStyles[alert.severity] ?? ""
-              }`}
-            >
-              {alert.severity}
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                statusStyles[alert.status] ?? ""
-              }`}
-            >
-              {alert.status}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500">{formatRelativeTime(alert.created_at)}</p>
-          <div className="mt-2 text-sm text-gray-600">
-            <AlertDetails details={alert.details_json} type={alert.type} />
-          </div>
-        </div>
-        {alert.status === "open" && (
-          <div className="flex gap-2 ml-4">
-            <button
-              onClick={() => onAction(alert.id, "acknowledged")}
-              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded hover:bg-purple-100"
-            >
-              Ack
-            </button>
-            <button
-              onClick={() => onAction(alert.id, "resolved")}
-              className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100"
-            >
-              Resolve
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AlertDetails({
-  details,
-  type,
-}: {
-  details: Record<string, unknown>;
-  type: string;
-}) {
-  if (type === "schema_drift") {
-    const added = details.added_columns as string[] | undefined;
-    const removed = details.removed_columns as string[] | undefined;
-    const changed = details.changed_columns as string[] | undefined;
-    return (
-      <div className="space-y-1">
-        {added && added.length > 0 && (
-          <div>
-            <span className="text-green-600">+ Added:</span>{" "}
-            {added.join(", ")}
-          </div>
-        )}
-        {removed && removed.length > 0 && (
-          <div>
-            <span className="text-red-600">- Removed:</span>{" "}
-            {removed.join(", ")}
-          </div>
-        )}
-        {changed && changed.length > 0 && (
-          <div>
-            <span className="text-yellow-600">~ Changed:</span>{" "}
-            {changed.join(", ")}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (type === "row_count") {
-    return (
-      <div>
-        Expected: {String(details.expected_range ?? details.expected ?? "—")}
-        {", "}Actual: {String(details.actual ?? "—")}
-        {details.z_score != null && ` (z-score: ${Number(details.z_score).toFixed(2)})`}
-      </div>
-    );
-  }
-
-  if (type === "null_rate") {
-    return (
-      <div>
-        Column: {String(details.column ?? "—")}
-        {", "}Baseline: {String(details.baseline_rate ?? "—")}
-        {", "}Current: {String(details.current_rate ?? "—")}
-      </div>
-    );
-  }
-
-  // Fallback: render as JSON
-  return (
-    <pre className="text-xs whitespace-pre-wrap break-words">
-      {JSON.stringify(details, null, 2)}
-    </pre>
-  );
-}
 
 export default TableDetail;
