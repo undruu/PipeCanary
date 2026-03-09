@@ -70,8 +70,17 @@ class TestRowCountAnomaly:
 
 class TestNullRateAnomaly:
     def test_insufficient_history(self):
+        result = AnomalyDetector.detect_null_rate_anomaly(0.05, [])
+        assert not result.is_anomaly
+
+    def test_single_historical_point_no_change(self):
         result = AnomalyDetector.detect_null_rate_anomaly(0.05, [0.05])
         assert not result.is_anomaly
+
+    def test_single_historical_point_from_zero(self):
+        result = AnomalyDetector.detect_null_rate_anomaly(0.1, [0.0])
+        assert result.is_anomaly
+        assert "appeared" in result.message
 
     def test_normal_null_rate(self):
         historical = [0.05, 0.04, 0.06, 0.05, 0.04, 0.05, 0.06]
