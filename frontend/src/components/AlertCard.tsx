@@ -167,6 +167,40 @@ export function AlertDetails({
     );
   }
 
+  if (type === "cardinality") {
+    const columnDetails = details.column_details as
+      | Record<string, { current_value: number; baseline_mean: number; baseline_std: number; z_score: number | null; message?: string }>
+      | undefined;
+
+    if (expanded && columnDetails) {
+      return (
+        <div className="space-y-2">
+          {details.columns_affected != null && (
+            <div className="text-gray-500">{Number(details.columns_affected)} column(s) affected</div>
+          )}
+          {Object.entries(columnDetails).map(([col, info]) => (
+            <div key={col} className="pl-2 border-l-2 border-teal-200">
+              <span className="font-medium font-mono text-sm">{col}</span>
+              <div className="text-xs text-gray-600">
+                Baseline: {Math.round(info.baseline_mean).toLocaleString()} → Current: {Math.round(info.current_value).toLocaleString()}
+                {info.z_score != null && ` (z: ${info.z_score.toFixed(1)})`}
+              </div>
+              {info.message && <div className="text-xs text-gray-500 italic">{info.message}</div>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <span>
+        {details.columns_affected != null
+          ? `${Number(details.columns_affected)} column(s) with cardinality change`
+          : "Cardinality change detected"}
+      </span>
+    );
+  }
+
   // Fallback
   return (
     <pre className="text-xs whitespace-pre-wrap break-words">

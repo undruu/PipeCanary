@@ -165,6 +165,7 @@ async def _dispatch_scheduled_checks():
             run_schema_check.delay(table_id)
             run_row_count_check.delay(table_id)
             run_null_rate_check.delay(table_id)
+            run_cardinality_check.delay(table_id)
             dispatched += 1
 
         logger.info("Dispatched checks for %d tables", dispatched)
@@ -408,6 +409,119 @@ async def _do_null_rate_check(table_id: str):
                 await db.flush()
                 logger.info(
                     "Null rate anomaly detected for %s in %d column(s)",
+                    full_table_name,
+                    len(anomalies_found),
+                )
+                await _send_notifications(db, connection, alert, table)
+
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+
+
+@celery_app.task(
+    name="app.tasks.monitoring.run_cardinality_check",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def run_cardinality_check(self, table_id: str):
+    """Run cardinality anomaly detection for a single table."""
+    logger.info("Running cardinality check for table %s", table_id)
+    try:
+        _run_async(_do_cardinality_check(table_id))
+    except Exception as exc:
+        logger.exception("Cardinality check failed for table %s", table_id)
+        raise self.retry(exc=exc)
+
+
+async def _do_cardinality_check(table_id: str):
+    async with task_session() as db:
+        try:
+            table, connection = await _load_table_with_connection(db, table_id)
+            connector = get_connector_for_connection(connection)
+            full_table_name = f"{table.schema_name}.{table.table_name}"
+
+            # 1. Get current schema to know which columns to check
+            columns_info = await connector.get_schema(full_table_name)
+            column_names = [col["name"] for col in columns_info]
+            if not column_names:
+                logger.info("No columns found for %s, skipping cardinality check", full_table_name)
+                return
+
+            # 2. Get cardinality (distinct counts) from the warehouse
+            cardinality_counts = await connector.get_cardinality(full_table_name, column_names)
+
+            # 3. Store as CheckResults
+            new_result_ids = []
+            for col_name in column_names:
+                distinct_count = cardinality_counts.get(col_name, 0)
+
+                check_result = CheckResult(
+                    table_id=table.id,
+                    check_type="cardinality",
+                    column_name=col_name,
+                    value=float(distinct_count),
+                )
+                db.add(check_result)
+                await db.flush()
+                new_result_ids.append(check_result.id)
+
+            # 4. For each column, fetch 14-day historical cardinality and detect anomalies
+            cutoff = datetime.utcnow() - timedelta(days=14)
+            anomalies_found = []
+
+            for col_name in column_names:
+                current_value = float(cardinality_counts.get(col_name, 0))
+
+                history_result = await db.execute(
+                    select(CheckResult.value)
+                    .where(
+                        CheckResult.table_id == table.id,
+                        CheckResult.check_type == "cardinality",
+                        CheckResult.column_name == col_name,
+                        CheckResult.measured_at >= cutoff,
+                        CheckResult.id.notin_(new_result_ids),
+                    )
+                    .order_by(CheckResult.measured_at.asc())
+                )
+                historical_counts = [row[0] for row in history_result.all()]
+
+                anomaly = AnomalyDetector.detect_cardinality_anomaly(
+                    current_count=current_value,
+                    historical_counts=historical_counts,
+                )
+
+                if anomaly.is_anomaly:
+                    anomalies_found.append((col_name, anomaly))
+
+            # 5. Create a single alert per table if any column has anomalies
+            if anomalies_found:
+                column_details = {}
+                for col_name, anomaly in anomalies_found:
+                    column_details[col_name] = {
+                        "current_value": anomaly.current_value,
+                        "baseline_mean": anomaly.baseline_mean,
+                        "baseline_std": anomaly.baseline_std,
+                        "z_score": anomaly.z_score,
+                        "message": anomaly.message,
+                    }
+
+                alert = Alert(
+                    table_id=table.id,
+                    type="cardinality",
+                    severity="warning",
+                    status="open",
+                    details_json={
+                        "columns_affected": len(anomalies_found),
+                        "column_details": column_details,
+                    },
+                )
+                db.add(alert)
+                await db.flush()
+                logger.info(
+                    "Cardinality anomaly detected for %s in %d column(s)",
                     full_table_name,
                     len(anomalies_found),
                 )

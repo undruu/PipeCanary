@@ -42,7 +42,7 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
-type Tab = "schema" | "row_count" | "null_rate" | "alerts" | "schedule";
+type Tab = "schema" | "row_count" | "null_rate" | "cardinality" | "alerts" | "schedule";
 
 function TableDetail() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +51,7 @@ function TableDetail() {
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
   const [rowCountHistory, setRowCountHistory] = useState<CheckResultData[]>([]);
   const [nullRateData, setNullRateData] = useState<CheckResultData[]>([]);
+  const [cardinalityData, setCardinalityData] = useState<CheckResultData[]>([]);
   const [schemaHistory, setSchemaHistory] = useState<SchemaSnapshotData[]>([]);
   const [alerts, setAlerts] = useState<AlertData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,14 +73,16 @@ function TableDetail() {
       setEditFrequency(scheduleData.check_frequency);
 
       // Non-critical fetches — fail gracefully so the page still renders
-      const [rowCounts, nullRates, schemas, alertsData] = await Promise.all([
+      const [rowCounts, nullRates, cardinality, schemas, alertsData] = await Promise.all([
         api.getCheckResults(id, { check_type: "row_count", days: 14 }).catch(() => []),
         api.getCheckResults(id, { check_type: "null_rate", days: 14 }).catch(() => []),
+        api.getCheckResults(id, { check_type: "cardinality", days: 14 }).catch(() => []),
         api.getSchemaHistory(id).catch(() => []),
         api.listAlerts({ table_id: id, limit: "20" }).catch(() => []),
       ]);
       setRowCountHistory(rowCounts);
       setNullRateData(nullRates);
+      setCardinalityData(cardinality);
       setSchemaHistory(schemas);
       setAlerts(alertsData);
       setError("");
@@ -196,10 +199,23 @@ function TableDetail() {
     rate: Math.round(rate * 10000) / 100, // as percentage
   }));
 
+  // Aggregate cardinality by column (latest value per column)
+  const latestCardByColumn: Record<string, number> = {};
+  for (const cr of cardinalityData) {
+    if (cr.column_name) {
+      latestCardByColumn[cr.column_name] = cr.value;
+    }
+  }
+  const cardBarData = Object.entries(latestCardByColumn).map(([col, count]) => ({
+    column: col,
+    distinct: count,
+  }));
+
   const tabs: { key: Tab; label: string }[] = [
     { key: "schema", label: "Schema" },
     { key: "row_count", label: "Row Count" },
     { key: "null_rate", label: "Null Rates" },
+    { key: "cardinality", label: "Cardinality" },
     { key: "alerts", label: `Alerts (${health.open_alerts_count})` },
     { key: "schedule", label: "Schedule" },
   ];
@@ -409,6 +425,36 @@ function TableDetail() {
             ) : (
               <p className="text-gray-500 text-center py-8">
                 No null rate data available yet.
+              </p>
+            )}
+          </div>
+        )}
+
+        {tab === "cardinality" && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-900 mb-4">
+              Distinct Value Count per Column
+            </h3>
+            {cardBarData.length > 0 ? (
+              <div style={{ width: "100%", height: Math.max(200, cardBarData.length * 36) }}>
+                <ResponsiveContainer>
+                  <BarChart data={cardBarData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: 12 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="column"
+                      tick={{ fontSize: 12 }}
+                      width={120}
+                    />
+                    <Tooltip formatter={(value: number | undefined) => [value != null ? value.toLocaleString() : "—", "Distinct"]} />
+                    <Bar dataKey="distinct" fill="#14b8a6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">
+                No cardinality data available yet.
               </p>
             )}
           </div>
