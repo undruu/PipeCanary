@@ -196,6 +196,15 @@ function Connections() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        navigate(`/connections/${conn.id}/select-tables`);
+                      }}
+                      className="text-canary-600 hover:text-canary-800 font-medium mr-3"
+                    >
+                      Add Tables
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handleTest(conn);
                       }}
                       disabled={actionLoading === conn.id}
@@ -288,13 +297,24 @@ function Connections() {
               >
                 Delete Connection
               </button>
-              <button
-                onClick={() => handleTest(selectedConnection)}
-                disabled={actionLoading === selectedConnection.id}
-                className="px-4 py-2 text-sm font-medium text-white bg-canary-600 rounded-md hover:bg-canary-500 disabled:opacity-50"
-              >
-                {actionLoading === selectedConnection.id ? "Testing..." : "Test Connection"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedConnection(null);
+                    navigate(`/connections/${selectedConnection.id}/select-tables`);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-canary-700 bg-white border border-canary-300 rounded-md hover:bg-canary-50"
+                >
+                  Add Tables
+                </button>
+                <button
+                  onClick={() => handleTest(selectedConnection)}
+                  disabled={actionLoading === selectedConnection.id}
+                  className="px-4 py-2 text-sm font-medium text-white bg-canary-600 rounded-md hover:bg-canary-500 disabled:opacity-50"
+                >
+                  {actionLoading === selectedConnection.id ? "Testing..." : "Test Connection"}
+                </button>
+              </div>
             </div>
           </div>
         )}
