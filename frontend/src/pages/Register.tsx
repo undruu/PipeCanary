@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { api } from "@/api/client";
 
 function Register() {
   const [name, setName] = useState("");
@@ -31,6 +32,18 @@ function Register() {
 
     try {
       await register(email, name, password);
+
+      // Redirect new users to onboarding if they have no connections
+      try {
+        const connections = await api.listConnections();
+        if (connections.length === 0) {
+          navigate("/onboarding", { replace: true });
+          return;
+        }
+      } catch {
+        // If connection check fails, proceed to dashboard
+      }
+
       navigate("/", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

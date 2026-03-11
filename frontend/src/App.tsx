@@ -9,12 +9,21 @@ import TableDetail from "./pages/TableDetail";
 import Alerts from "./pages/Alerts";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Onboarding from "./pages/Onboarding";
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute>
+            <Onboarding />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/"
         element={
