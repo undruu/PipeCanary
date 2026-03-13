@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/api/client";
+import CanaryIcon from "@/components/CanaryIcon";
 
 function Register() {
   const [name, setName] = useState("");
@@ -56,6 +57,7 @@ function Register() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
+          <CanaryIcon className="w-12 h-12 text-canary-500 mx-auto mb-3" />
           <h1 className="text-3xl font-bold text-canary-600">PipeCanary</h1>
           <p className="mt-2 text-gray-600">Create your account</p>
         </div>
