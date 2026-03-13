@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import CanaryIcon from "@/components/CanaryIcon";
 
 const navItems = [
   { path: "/", label: "Dashboard" },
@@ -41,7 +42,8 @@ function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
+              <div className="flex-shrink-0 flex items-center gap-2">
+                <CanaryIcon className="w-7 h-7 text-canary-500" />
                 <span className="text-xl font-bold text-canary-600">
                   PipeCanary
                 </span>
