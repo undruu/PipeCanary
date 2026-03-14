@@ -17,7 +17,7 @@ function SparklineChart({ data, color = "#d97706", height = 32 }: SparklineChart
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
           <Tooltip
-            formatter={(value: number | undefined) => [value != null ? value.toLocaleString() : "—", "Value"]}
+            formatter={((value: unknown) => [typeof value === "number" ? value.toLocaleString() : String(value ?? "—"), "Value"]) as never}
             labelFormatter={(_: ReactNode, payload: readonly { payload?: { label?: string } }[]) => {
               return payload?.[0]?.payload?.label ?? "";
             }}

@@ -381,7 +381,7 @@ function TableDetail() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => v.toLocaleString()} />
-                    <Tooltip formatter={(value: number | undefined) => [value != null ? value.toLocaleString() : "—", "Rows"]} />
+                    <Tooltip formatter={((value: unknown) => [typeof value === "number" ? value.toLocaleString() : String(value ?? "—"), "Rows"]) as never} />
                     <Line
                       type="monotone"
                       dataKey="value"
@@ -417,7 +417,7 @@ function TableDetail() {
                       tick={{ fontSize: 12 }}
                       width={120}
                     />
-                    <Tooltip formatter={(value: number | undefined) => [`${value ?? 0}%`, "Null Rate"]} />
+                    <Tooltip formatter={((value: unknown) => [`${value ?? 0}%`, "Null Rate"]) as never} />
                     <Bar dataKey="rate" fill="#f59e0b" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -447,7 +447,7 @@ function TableDetail() {
                       tick={{ fontSize: 12 }}
                       width={120}
                     />
-                    <Tooltip formatter={(value: number | undefined) => [value != null ? value.toLocaleString() : "—", "Distinct"]} />
+                    <Tooltip formatter={((value: unknown) => [typeof value === "number" ? value.toLocaleString() : String(value ?? "—"), "Distinct"]) as never} />
                     <Bar dataKey="distinct" fill="#14b8a6" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
