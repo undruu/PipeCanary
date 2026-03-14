@@ -5,13 +5,13 @@ import {
   type AlertData,
   type TableListItemData,
 } from "@/api/client";
-import AlertCard, {
-  AlertDetails,
+import AlertCard, { AlertDetails } from "@/components/AlertCard";
+import {
   formatRelativeTime,
   alertTypeLabels,
   severityStyles,
   statusStyles,
-} from "@/components/AlertCard";
+} from "@/components/alertUtils";
 import FilterBar from "@/components/FilterBar";
 import Pagination from "@/components/Pagination";
 import Modal from "@/components/Modal";
