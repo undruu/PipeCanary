@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -9,6 +10,8 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+
+_TAG_RE = re.compile(r"<[^>]+>")
 
 # ---------------------------------------------------------------------------
 # HTML templates
@@ -110,17 +113,27 @@ class EmailNotifier:
     def __init__(self, to_email: str):
         self.to_email = to_email
 
+    # -- console fallback ---------------------------------------------------
+
+    def _log_to_console(self, *, subject: str, html_content: str) -> None:
+        """Log the email to the console when SendGrid is not configured."""
+        plain = _TAG_RE.sub("", html_content)
+        plain = "\n".join(line.strip() for line in plain.splitlines() if line.strip())
+        logger.info(
+            "[EMAIL PREVIEW] To: %s | Subject: %s\n%s",
+            self.to_email,
+            subject,
+            plain,
+        )
+
     # -- single alert -------------------------------------------------------
 
     async def send_alert(self, alert_data: dict[str, Any]) -> bool:
         """Send a single alert notification email.
 
         Returns True if the message was accepted by SendGrid.
+        Falls back to console logging when SendGrid is not configured.
         """
-        if not settings.sendgrid_api_key:
-            logger.warning("SendGrid API key not configured, skipping email notification")
-            return False
-
         if not self.to_email:
             logger.warning("Recipient email not configured, skipping email notification")
             return False
@@ -134,6 +147,10 @@ class EmailNotifier:
         body_html = _render_alert_html(alert_data)
         html_content = _wrap_html(body_html, subject=subject)
 
+        if not settings.sendgrid_api_key:
+            self._log_to_console(subject=subject, html_content=html_content)
+            return True
+
         return await self._send(subject=subject, html_content=html_content)
 
     # -- digest (batch) -----------------------------------------------------
@@ -142,11 +159,8 @@ class EmailNotifier:
         """Send a digest email containing multiple alerts.
 
         Returns True if the message was accepted by SendGrid.
+        Falls back to console logging when SendGrid is not configured.
         """
-        if not settings.sendgrid_api_key:
-            logger.warning("SendGrid API key not configured, skipping email digest")
-            return False
-
         if not self.to_email:
             logger.warning("Recipient email not configured, skipping email digest")
             return False
@@ -165,6 +179,10 @@ class EmailNotifier:
 
         alert_blocks = "".join(_render_alert_html(a) for a in alerts)
         html_content = _wrap_html(summary + alert_blocks, subject=subject)
+
+        if not settings.sendgrid_api_key:
+            self._log_to_console(subject=subject, html_content=html_content)
+            return True
 
         return await self._send(subject=subject, html_content=html_content)
 

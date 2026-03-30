@@ -68,6 +68,9 @@ async def _send_notifications(
     )
     configs = result.scalars().all()
 
+    if not configs:
+        logger.info("No active notification configs for org %s", connection.org_id)
+
     alert_data = {
         "type": alert.type,
         "table_name": f"{table.schema_name}.{table.table_name}",

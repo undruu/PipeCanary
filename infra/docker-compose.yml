@@ -38,6 +38,8 @@ services:
       PIPECANARY_DATABASE_URL_SYNC: postgresql://pipecanary:pipecanary@postgres:5432/pipecanary
       PIPECANARY_REDIS_URL: redis://redis:6379/0
       PIPECANARY_DEBUG: "true"
+      PIPECANARY_SENDGRID_API_KEY: ${PIPECANARY_SENDGRID_API_KEY:-}
+      PIPECANARY_SENDGRID_FROM_EMAIL: ${PIPECANARY_SENDGRID_FROM_EMAIL:-alerts@pipecanary.io}
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,6 +56,8 @@ services:
       PIPECANARY_DATABASE_URL: postgresql+asyncpg://pipecanary:pipecanary@postgres:5432/pipecanary
       PIPECANARY_DATABASE_URL_SYNC: postgresql://pipecanary:pipecanary@postgres:5432/pipecanary
       PIPECANARY_REDIS_URL: redis://redis:6379/0
+      PIPECANARY_SENDGRID_API_KEY: ${PIPECANARY_SENDGRID_API_KEY:-}
+      PIPECANARY_SENDGRID_FROM_EMAIL: ${PIPECANARY_SENDGRID_FROM_EMAIL:-alerts@pipecanary.io}
     depends_on:
       postgres:
         condition: service_healthy
